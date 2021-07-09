@@ -1,7 +1,10 @@
 # pywarper
 python function method warping around
-example:
 
+example:
+    
+    from pywarper import warp
+    
     def converter_1(value):
         return (value*value) + 1  
     
