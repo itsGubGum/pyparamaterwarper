@@ -1,6 +1,7 @@
 # pywarper
 
-convert variable beffore pass it
+convert function passed arguments before
+its warping up the body of function as function(convert(x))
 
 example:
     
