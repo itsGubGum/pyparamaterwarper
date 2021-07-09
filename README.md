@@ -5,7 +5,7 @@ example:
     def converter(x):
         return (x*x) + 1  
     
-    register = {"input":converter}
+    register = {"z":converter}
     
     @warp(register)
     def function(x,y,z):
