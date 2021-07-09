@@ -4,7 +4,7 @@ from .format_paramater import format_parameter
 from .constant import ITEM_GET,STATIC,ATTR_GET
 from inspect import signature
 
-@s
+
 class Warper:
     def __init__(self,obj,sig,par,typ,cou=0):
         self.obj         = obj
@@ -101,54 +101,7 @@ def warp_attrs_gen(cls,register,attributes):
         new_attr    = warper(attr)
         yield name,attr,new_attr
     return warper
-"""
-def warp_class(cls):#TODO waarp cls in way that i can generate mutiple version of same fuction warped in differently ways
-    def warper(reg,attr):
-        pass
-    return warper
-"""
+
 def warp_cls(cls,reg,attributes):
     new_attributes = warp_attrs(cls,reg,attributes)
     return type(cls.__name__,(cls,),new_attributes)
-
-
-
-if __name__ == '__main__':
-
-    from std.marker import SimpleRegister
-
-
-
-    register = SimpleRegister()
-    mark     = register.marker
-
-    @mark.x.y
-    def convert_to_cm(x):
-        return x*100
-
-    @mark.z
-    def multiply(x):
-        return x*100000
-
-    @warp(register)
-    def sample(x,y,z=1):
-        print(x,y,z)
-        return (x+y+z)
-
-    @mark.point
-    def convert_to_point(cord):
-        return cord['row'] * cord["column"] * 4
-
-    class Some():
-        @warp(register)
-        def seek(self,point):
-            # this stuff that you dont have to be changed or subclassed
-            print(point)
-            pass
-
-    sample(1,2,3)
-    obj = Some()
-    cord = dict(row=2,column=1)
-    r   = obj.seek(cord)
-    print("__end__")
-
