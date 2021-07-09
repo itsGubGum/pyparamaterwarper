@@ -22,3 +22,6 @@ example:
     register["x"] = lambda value : value
     
     function(2,4,8)
+
+detail:
+    you can remove __init__ file and take only the pywarper.py into your env
