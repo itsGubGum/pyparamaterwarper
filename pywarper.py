@@ -144,9 +144,13 @@ def {fac} ({obj},{par_fac}):
         return eval(name_fac)(self.obj, names)
 
 
+def _warp(obj, kwargs):
+    return Warper.from_obj(obj).warp(kwargs)
+
+
 def warp(kwargs):
     def warper(obj):
-        return Warper.from_obj(obj).warp(kwargs)
+        return _warp(obj, kwargs)
 
     return warper
 
