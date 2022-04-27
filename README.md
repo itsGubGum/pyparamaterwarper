@@ -38,13 +38,13 @@ foo(1)
 ```
 
 ```python
-from pywarper import warp,GetMode
+from pywarper import warp
 class Target:
 	@staticmethod
 	def x(value):
 		return x*100
 		
-@warp(Target,mode=GetMode.getAttr)
+@warp(Target)
 def foo(x,*args):
 	return x
 
