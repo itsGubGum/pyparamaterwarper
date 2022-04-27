@@ -156,7 +156,7 @@ def dwarp(kwargs,mode=None):
 
 
 
-def warp_frist_kind(obj,function,kind):
+def warp_first_kind(obj, function, kind):
     par = signature(obj).parameters
     key = None
     for k,v in par.items():
@@ -201,6 +201,6 @@ def warp_nfirst_paramaters(obj,functions):
     return obj
 
 
-warp_args    = partial(warp_frist_kind,kind=_VAR_POSITIONAL)
+warp_args    = partial(warp_first_kind, kind=_VAR_POSITIONAL)
 
-warp_kwargs = partial(warp_frist_kind,kind=_VAR_KEYWORD)
+warp_kwargs = partial(warp_first_kind, kind=_VAR_KEYWORD)
