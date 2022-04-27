@@ -78,6 +78,11 @@ def _format_parameter(kind, k=None, v=None):
 # warp classes methods in batch based on pattern ,return type ,
 #TODO tests
 def warp_by_name(obj, kwargs, mode=None):
+    if mode is None:
+        if isinstance(kwargs,dict):
+            mode = GetMode.getItem
+        else:
+            mode = GetMode.getAttr
     sig = signature(obj)
     par = sig.parameters
     cou = 0
