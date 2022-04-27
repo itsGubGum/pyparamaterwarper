@@ -1,12 +1,16 @@
-from inspect import _ParameterKind
+from functools import partial
+from inspect import (_ParameterKind,
+                     _VAR_POSITIONAL,
+                     _VAR_KEYWORD,
+                     _KEYWORD_ONLY,
+                     _POSITIONAL_OR_KEYWORD,
+                     _POSITIONAL_ONLY)
 from inspect import signature
+from enum import IntEnum
 
-__all__ = ["warp_cls", "warp", "warp_attrs"]
-
-ITEM_GET = 0
-ATTR_GET = 1
-STATIC = 2
-SELF_GET = 3
+class GetMode(IntEnum):
+    getItem = 0
+    getAttr = 1
 
 
 def _format_call(self, name, key, mode):
@@ -25,10 +29,8 @@ def _format_call(self, name, key, mode):
     def push_name(n):
         return f'_{n}'
 
-    _fromat = {ITEM_GET: format_item_get, ATTR_GET: format_attr_get, STATIC: format_static}
+    _fromat = {GetMode.getItem: format_item_get, GetMode.getAttr: format_attr_get}
 
-    if mode == STATIC:
-        key = push_name(name)
     if key is None:
         key = name
     formated_call = _format_call(self, key, name, mode)
@@ -72,98 +74,133 @@ class _FormatParameters:
 def _format_parameter(kind, k=None, v=None):
     return _FormatParameters[kind](k=k, v=v)
 
+#TODO support classes (__call__,__init__)
+# warp classes methods in batch based on pattern ,return type ,
+#TODO tests
+def warp_by_name(obj, kwargs, mode=None):
+    sig = signature(obj)
+    par = sig.parameters
+    cou = 0
+    longest = max(par.keys())
+    if mode == None:
+        if isinstance(kwargs, dict):
+            mode = GetMode.getItem
+        elif isinstance(kwargs, (object, type)):
+            mode = GetMode.getAttr
 
-class Warper:
-    def __init__(self, obj, sig, par, typ, cou=0):
-        self.obj = obj
-        self.sig = sig
-        self.par = par
-        self.typ = typ
-        self.cou = cou
-
-    @classmethod
-    def from_obj(self, obj):
-        sig = signature(obj)
-        par = sig.parameters
-        typ = type(obj)
-        return self(obj, sig, par, typ)
-
-    def diff(self, names):
-        return self.par.keys() & names
-
-    @property
-    def longest(self):
-        return max(self.par.keys())
-
-    @property
-    def name(self):
-        return self.obj.__name__
-
-    @property
-    def gunique(self):
-        name = "%s%s" % (self.longest, self.cou)
-        self.cou += 1
+    def generate_unique_name():
+        nonlocal cou
+        name = "%s%s" % (longest, cou)
+        cou += 1
         return name
 
-    def warp(self, names, mode=ITEM_GET):
-        changelog = self.diff(names.keys())
-        arguments = []
-        paramaters_factory = []
-        name_kwargs = self.gunique
-        paramaters_factory.append(name_kwargs)
-        for key, item in self.par.items():
-            kind = item.kind
-            value = key
-            if key in changelog:
-                # func_key,value = format_call(name_kwargs,key,names[key],mode) # :DEAD-CODE:
-                func_key, value = _format_call(name_kwargs, key, None, mode)
-            argument = _format_parameter(kind, key, value)
-            arguments.append(argument)
-        func_block = """
+    kwargs_keys = dict().keys()
+    if isinstance(kwargs, dict):
+        kwargs_keys = kwargs.keys()
+    elif isinstance(kwargs, type):
+        kwargs_keys = kwargs.__dict__.keys()
+    elif isinstance(kwargs, object):#TODO fix this line
+        kwargs_keys = type(kwargs).__dict__.keys()
+
+    changelog = par.keys() & kwargs_keys
+    arguments = []
+    paramaters_factory = []
+    name_kwargs = generate_unique_name()
+
+    paramaters_factory.append(name_kwargs)
+    for key, item in par.items():
+        kind = item.kind
+        value = key
+        if key in changelog:  # formating get (item|attr|static)depend so on
+            # func_key,value = format_call(name_kwargs,key,names[key],mode) # :DEAD-CODE:
+            func_key, value = _format_call(name_kwargs, key, None, mode)
+        argument = _format_parameter(kind, key, value)
+        arguments.append(argument)
+    # Formating-String
+    func_block = """
 def {fac} ({obj},{par_fac}):
     def {warped}{sig_obj}:
         return {obj}({par_warped})
     return {warped}
-"""
-        par_warped = ",".join(arguments)
-        name_fac = self.gunique
-        name_obj = self.gunique
-        name_war = self.gunique
-        par_fac = ",".join(paramaters_factory)
-        f_map = dict(
-            fac=name_fac,
-            obj=name_obj,
+    """
+    par_warped = ",".join(arguments)
+    function_name = generate_unique_name()
+    argument_for_object = generate_unique_name()
+    name_war = generate_unique_name()
+    par_fac = ",".join(paramaters_factory)
+    f_map = dict(
+            fac=function_name,
+            obj=argument_for_object,
             par_fac=par_fac,
             warped=name_war,
-            sig_obj=self.sig,
+            sig_obj=sig,
             par_warped=par_warped)
-        src = func_block.format_map(f_map)
-        code = compile(src, "<ast>", "exec")
-        exec(code)
-        self.cou = 0
-        return eval(name_fac)(self.obj, names)
+    src = func_block.format_map(f_map)
+    # Compileing exceuting
+    code = compile(src, "<ast>", "exec")
+    exec(code)
+    return eval(function_name)(obj, kwargs)
 
 
-def _warp(obj, kwargs):
-    return Warper.from_obj(obj).warp(kwargs)
+def warp(kwargs, mode=None):
+    def _newobjct(obj):
+        return warp_by_name(obj, kwargs, mode=mode)
+    return _newobjct
+
+def dwarp(kwargs,mode=None):
+    def _warp(obj):
+        def _newobjct(*args,**kws):
+            return warp_by_name(obj, kwargs, mode=mode)(*args, **kws)
+        return _newobjct
+    return _warp
 
 
-def warp(kwargs):
-    def warper(obj):
-        return _warp(obj, kwargs)
 
-    return warper
+def warp_frist_kind(obj,function,kind):
+    par = signature(obj).parameters
+    key = None
+    for k,v in par.items():
+        if v.kind ==kind:
+            key = k
+            break
+    if key:
+        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+    return obj
+
+def warp_first_in_kinds(obj,function,kind):
+    par = signature(obj).parameters
+    key = None
+    for k,v in par.items():
+        if v.kind in kind:
+            key = k
+            break
+    if key:
+        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+    return obj
+def warp_nfirst_in_kinds(obj,functions,kind):
+    par     = signature(obj).parameters
+    keys    = []
+    for k,v in par.items():
+        if v.kind  in kind:
+            keys.append(k)
+    if len(keys)> 0:
+        return warp_by_name(obj, {k:v for k,v in zip(keys,functions)}, mode=GetMode.getItem)
+    return obj
+
+def warp_first_paramater(obj,function):
+    par = signature(obj).parameters
+    if len(par)>0:
+        key = next(iter(par.keys()))
+        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+    return obj
+
+def warp_nfirst_paramaters(obj,functions):
+    par = signature(obj).parameters
+    if len (par) > 0:
+        return warp_by_name(obj, {k:v for k,v in zip(par.keys(),functions)}, mode=GetMode.getItem)
+    return obj
 
 
-def warp_attrs(cls, register, attributes):
-    warper = warp(register)
-    new = dict()
-    for name in attributes:
-        attr = getattr(cls, name)
-        new[name] = warper(attr)
-    return new
+warp_args    = partial(warp_frist_kind,kind=_VAR_POSITIONAL)
 
-
-def warp_cls(cls, reg, attributes):
-    new_attributes = warp_attrs(cls, reg, attributes)
-    return type(cls.__name__, (cls,), new_attributes)
+warp_kwargs = partial(warp_frist_kind,kind=_VAR_KEYWORD)
