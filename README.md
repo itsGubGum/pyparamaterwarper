@@ -1,29 +1,62 @@
-# pywarper
+# Pywarper
+- a way to warp fucntions and convert passed arguments beffore they reach the main function
+- this is fork from lost account
+- this tools allow you to write dry code  and  its short cut  
+## Features
 
-convert function passed arguments before
-its warping up the body of function as function(convert(x))
+- warp *args
+- warp **kwargs
+- warp first-paramater
+- warp n-first-paramater
+- warp warp-first-paramater
+- warp-first-kind
+- warp n-first-kind
+--i  mean by kind:
+-- - _VAR_POSITIONAL
+-- - _VAR_KEYWORD
+-- - _KEYWORD_ONLY
+-- -  _POSITIONAL_OR_KEYWORD
+-- -  _POSITIONAL_ONLY
 
-example:
-    
-    from pywarper import warp
-    
-    def converter_1(value):
-        return (value*value) + 1  
-    
-    def converter_2(value):
-        return (value/2)*3.14
-    
-    register = {"z":converter_1,"y":converter_2}
-    
-    @warp(register)
-    def function(x,y,z):
-        return x+y+z
-    
-    function(2,4,8)
-    
-    register["x"] = lambda value : value
-    
-    function(2,4,8)
+------------
+## Usage
 
-detail:
-    you can remove __init__ file and take only the pywarper.py into your env
+```python
+from pywarper import warp
+
+def convert_to_cm(x):
+	return x * 100
+target =  {"x":convert_to_cm}
+@warp(target)
+def foo(x,*args):
+	return x
+foo(1)
+# 100
+target["x"] = lambda x :x*1000
+foo(1)
+# 1000
+```
+
+```python
+from pywarper import warp,GetMode
+class Target:
+	@staticmethod
+	def x(value):
+		return x*100
+		
+@warp(Target,mode=GetMode.getAttr)
+def foo(x,*args):
+	return x
+
+```
+## Up comming feature
+- support classes (they work but need proxy object maybe)
+- support on spesail classes dunder methods __dunder__
+- support first n type depend on annotation
+...etc
+
+
+
+
+
+
