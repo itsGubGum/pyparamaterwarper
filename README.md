@@ -22,12 +22,12 @@
 ## Usage
 
 ```python
-from pywarper import warp
+from pywarper import dwarp
 
 def convert_to_cm(x):
 	return x * 100
 target =  {"x":convert_to_cm}
-@warp(target)
+@dwarp(target)
 def foo(x,*args):
 	return x
 foo(1)
@@ -38,13 +38,13 @@ foo(1)
 ```
 
 ```python
-from pywarper import warp
+from pywarper import dwarp
 class Target:
 	@staticmethod
 	def x(value):
 		return x*100
 		
-@warp(Target)
+@dwarp(Target)
 def foo(x,*args):
 	return x
 
