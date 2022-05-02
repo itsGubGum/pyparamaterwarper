@@ -53,6 +53,7 @@ def foo(x,*args):
 - support classes (they work but need proxy object maybe)
 - support on spesail classes dunder methods __dunder__
 - support first n type depend on annotation
+- Support classes (partial support rigt now i find way to do it)
 ...etc
 
 
