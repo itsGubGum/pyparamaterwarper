@@ -8,7 +8,7 @@ from inspect import (_ParameterKind,
 from inspect import signature
 from enum import IntEnum
 
-class GetMode(IntEnum):
+class Mode(IntEnum):
     getItem = 0
     getAttr = 1
 
@@ -29,7 +29,7 @@ def _format_call(self, name, key, mode):
     def push_name(n):
         return f'_{n}'
 
-    _fromat = {GetMode.getItem: format_item_get, GetMode.getAttr: format_attr_get}
+    _fromat = {Mode.getItem: format_item_get, Mode.getAttr: format_attr_get}
 
     if key is None:
         key = name
@@ -77,21 +77,21 @@ def _format_parameter(kind, k=None, v=None):
 #TODO support classes (__call__,__init__)
 # warp classes methods in batch based on pattern ,return type ,
 #TODO tests
-def warp_by_name(obj, kwargs, mode=None):
+def warp(obj, kwargs, mode=None):
     if mode is None:
         if isinstance(kwargs,dict):
-            mode = GetMode.getItem
+            mode = Mode.getItem
         else:
-            mode = GetMode.getAttr
+            mode = Mode.getAttr
     sig = signature(obj)
     par = sig.parameters
     cou = 0
     longest = max(par.keys())
     if mode == None:
         if isinstance(kwargs, dict):
-            mode = GetMode.getItem
+            mode = Mode.getItem
         elif isinstance(kwargs, (object, type)):
-            mode = GetMode.getAttr
+            mode = Mode.getAttr
 
     def generate_unique_name():
         nonlocal cou
@@ -146,20 +146,17 @@ def {fac} ({obj},{par_fac}):
     exec(code)
     return eval(function_name)(obj, kwargs)
 
-
-def warp(kwargs, mode=None):
+def dwarp(kwargs, mode=None):
     def _newobjct(obj):
-        return warp_by_name(obj, kwargs, mode=mode)
+        return warp(obj, kwargs, mode=mode)
     return _newobjct
 
-def dwarp(kwargs,mode=None):
+def ddwarp(kwargs,mode=None):
     def _warp(obj):
         def _newobjct(*args,**kws):
-            return warp_by_name(obj, kwargs, mode=mode)(*args, **kws)
+            return warp(obj, kwargs, mode=mode)(*args, **kws)
         return _newobjct
     return _warp
-
-
 
 def warp_first_kind(obj, function, kind):
     par = signature(obj).parameters
@@ -169,8 +166,14 @@ def warp_first_kind(obj, function, kind):
             key = k
             break
     if key:
-        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+        return warp(obj, {key:function}, mode=Mode.getItem)
     return obj
+
+def dwarp_first_kind(function,kind):
+    def _newobjct(obj):
+        return warp_first_kind(obj, function,kind)
+    return _newobjct
+
 
 def warp_first_in_kinds(obj,function,kind):
     par = signature(obj).parameters
@@ -180,8 +183,14 @@ def warp_first_in_kinds(obj,function,kind):
             key = k
             break
     if key:
-        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+        return warp(obj, {key:function}, mode=Mode.getItem)
     return obj
+
+def dwarp_first_in_kinds(function,kind):
+    def _newobjct(obj):
+        return warp_first_in_kinds(obj, function,kind)
+    return _newobjct
+
 def warp_nfirst_in_kinds(obj,functions,kind):
     par     = signature(obj).parameters
     keys    = []
@@ -189,23 +198,49 @@ def warp_nfirst_in_kinds(obj,functions,kind):
         if v.kind  in kind:
             keys.append(k)
     if len(keys)> 0:
-        return warp_by_name(obj, {k:v for k,v in zip(keys,functions)}, mode=GetMode.getItem)
+        return warp(obj, {k:v for k, v in zip(keys, functions)}, mode=Mode.getItem)
     return obj
+
+def dwarp_warp_nfirst_in_kinds(functions,kind):
+    def _newobject(obj):
+        return warp_nfirst_in_kinds(obj,functions,kind)
+    return _newobject
+
 
 def warp_first_paramater(obj,function):
     par = signature(obj).parameters
     if len(par)>0:
         key = next(iter(par.keys()))
-        return warp_by_name(obj, {key:function}, mode=GetMode.getItem)
+        return warp(obj, {key:function}, mode=Mode.getItem)
     return obj
+
+def dwarp_warp_first_paramater(function):
+    def _newobject(obj):
+        return warp_first_paramater(obj,function)
+    return _newobject
+
 
 def warp_nfirst_paramaters(obj,functions):
     par = signature(obj).parameters
     if len (par) > 0:
-        return warp_by_name(obj, {k:v for k,v in zip(par.keys(),functions)}, mode=GetMode.getItem)
+        return warp(obj, {k:v for k, v in zip(par.keys(), functions)}, mode=Mode.getItem)
     return obj
 
+def dwarp_warp_nfirst_paramaters(functions):
+    def _newobject(obj):
+        return warp_nfirst_paramaters(obj,functions)
+    return _newobject
 
 warp_args    = partial(warp_first_kind, kind=_VAR_POSITIONAL)
 
+def dwarp_args(function):
+    def _newobject(obj):
+        return warp_args(obj,function)
+    return _newobject
+
 warp_kwargs = partial(warp_first_kind, kind=_VAR_KEYWORD)
+
+def dwarp_kwargs(function):
+    def _newobject(obj):
+        return warp_kwargs(obj,function)
+    return _newobject
